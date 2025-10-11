@@ -1,6 +1,6 @@
 # Real-Time Threat Hunting with Zeek and ELK Stack
 
-![Architecture Diagram](\pictures\flowchart.png)
+![Architecture Diagram](pictures/flowchart.png)
 
 ## Description
 This project is a real-time cybersecurity demo built for a college expo. It simulates threat hunting in a Security Operations Center (SOC) using open-source tools. The system detects network attacks like port scanning (via Nmap) and SSH brute-force (via Hydra) on a victim machine, logs them with Zeek, visualizes spikes in Kibana, and provides alerts/blocking via custom scripts.
