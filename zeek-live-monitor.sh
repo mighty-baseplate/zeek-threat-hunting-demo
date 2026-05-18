@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Zeek Live Monitor - Real-time log viewer for demonstrations
+# Real-time network monitor for Zeek logs
 
 LOG_DIR="/opt/zeek/spool/zeek"
 
@@ -30,7 +30,7 @@ print_header() {
     echo ""
 }
 
-# Monitor SSH attacks specifically (for your Hydra demo)
+# Show SSH attacks with highlighting
 monitor_ssh_attacks() {
     echo -e "${BOLD}${RED}🚨 SSH BRUTE-FORCE ATTEMPTS DETECTED 🚨${NC}\n"
     echo -e "${BOLD}Time      Attacker IP        → Target           Client              Status${NC}"
@@ -97,7 +97,7 @@ monitor_connections() {
     done
 }
 
-# Combined view for presentations
+# Split-screen view: SSH attacks + all connections
 monitor_combined() {
     print_header
     

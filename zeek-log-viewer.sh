@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Zeek Log Viewer - Clean formatted output for demonstrations
+# Format and display Zeek logs
 # Usage: ./zeek-log-viewer.sh [conn|ssh|dns|http|all]
 
 LOG_DIR="/opt/zeek/spool/zeek"
@@ -17,7 +17,6 @@ WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
-# Clear screen and show header
 clear
 echo -e "${BOLD}${CYAN}╔════════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BOLD}${CYAN}║           ZEEK NETWORK SECURITY MONITOR - LIVE LOGS                ║${NC}"

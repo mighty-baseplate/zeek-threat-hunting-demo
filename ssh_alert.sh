@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Real-time SSH brute-force alert and blocker
+# SSH brute-force alert and IP blocker
 ZEEK_LOG="/opt/zeek/logs/current/ssh.log"
 CHECK_INTERVAL=5  # Check every 5 seconds
 THRESHOLD=10      # Alert after 10 failed attempts in 30 seconds
@@ -11,7 +11,6 @@ echo "Watching: $ZEEK_LOG"
 echo "Threshold: $THRESHOLD failed logins in $WINDOW seconds"
 echo "---"
 
-# Keep track of last processed line
 LAST_LINE=0
 
 while true; do
