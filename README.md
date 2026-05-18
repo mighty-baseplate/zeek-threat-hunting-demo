@@ -1,89 +1,75 @@
-# Real-Time Threat Hunting with Zeek
+# Real-Time Threat Hunting with Zeek and ELK Stack
 
-Demo project I built to show network threat detection in action. Two VMs, some Zeek magic, and watch a brute-force attack get detected and blocked in real-time.
+![Architecture Diagram](pictures/flowchart.png)
 
-## What This Does
+## Description
+This project is a real-time cybersecurity demo built for a college expo. It simulates threat hunting in a Security Operations Center (SOC) using open-source tools. The system detects network attacks like port scanning (via Nmap) and SSH brute-force (via Hydra) on a victim machine, logs them with Zeek, visualizes spikes in Kibana, and provides alerts/blocking via custom scripts.
 
-Set up two VMs: one attacker (Kali Linux) running SSH brute-force attacks, one SOC box (Ubuntu) running Zeek + ELK. Zeek captures the traffic, logs go into Elasticsearch, and when things get suspicious, a script pops up an alert asking if you want to block the IP.
+- **Attacker VM**: Kali Linux simulates threats.
+- **Victim/SOC VM**: Ubuntu 22.04 runs Zeek for monitoring, ELK Stack for storage/visualization, and custom Bash scripts for enhanced detection/response.
+- **Key Features**:
+  - Real-time log monitoring with clean, colored outputs.
+  - Graphical alerts for brute-force attempts (threshold: >10 failures in 30 seconds).
+  - Automatic IP blocking with iptables on user confirmation.
+  - Kibana dashboards for visual spikes in failed logins.
 
-It's meant for a demo/college expo, but the core detection logic works and can be extended to other attack types (DNS tunneling, HTTP scanning, etc.).
+This repo contains custom scripts, documentation, and visuals. Feel free to clone and run it!
 
-## The Setup
+## Features
+- **Detection**: Zeek captures traffic and logs suspicious activity (e.g., `conn.log` for scans, `ssh.log` for SSH failures).
+- **Visualization**: Kibana shows line charts of failed logins (filter: `zeek.ssh.auth_success: false`).
+- **Monitoring & Alerts**: Custom scripts format logs, monitor live, and trigger pop-ups.
+- **Response**: Block attacker IPs dynamically.
+- **Open-Source**: All tools are free; extendable for more threats (e.g., DNS tunneling).
 
-- **Attacker VM**: Kali Linux running Hydra
-- **SOC/Victim VM**: Ubuntu 22.04 with Zeek, Elasticsearch/Kibana for logs, custom Bash scripts for alerts
-- **What you see**: Terminal logs with colors, real-time monitoring, Kibana dashboards, and pop-up alerts when attacks hit the threshold
+## Requirements
+- Two VMs: Kali Linux (attacker) and Ubuntu 22.04 (victim/SOC).
+- Installed on Ubuntu:
+  - Zeek: `sudo apt install zeek`
+  - ELK Stack: `sudo apt install elasticsearch kibana filebeat`
+  - Zenity (for GUI alerts): `sudo apt install zenity`
+- On Kali: Hydra and Nmap (pre-installed).
 
 ## Installation
+1. Clone this repo: `git clone https://github.com/mighty-baseplate/zeek-threat-hunting-demo`
+2. Set up Zeek on Ubuntu: `sudo zeekctl deploy`
+3. Configure Filebeat to ship Zeek logs: Edit `/etc/filebeat/filebeat.yml` with paths to `/opt/zeek/logs/current/*.log` and hosts `localhost:9200`.
+4. Start services: `sudo systemctl start elasticsearch kibana filebeat`
+5. Copy scripts to Ubuntu: Place in `~/scripts` and make executable: `chmod +x *.sh`
+6. Edit Zeek config: Add `@load protocols/ssh/detect-bruteforcing` to `/opt/zeek/share/zeek/site/local.zeek`, then `sudo zeekctl deploy`.
 
-Make sure you have two VMs set up and on the same network. On Ubuntu:
+## Usage / Demo Flow
+1. **Start Monitoring on Ubuntu**:
+   - Run live monitor: `./zeek-live-monitor.sh` (shows real-time connections/attacks with colors).
+   - Run log viewer: `./zeek-log-viewer.sh ssh` (formatted tables for specific logs).
+   - Run alert script: `sudo ./ssh_alert.sh` (monitors and pops alert on threshold).
 
-```bash
-sudo apt install zeek elasticsearch kibana filebeat zenity
-git clone https://github.com/mighty-baseplate/zeek-threat-hunting-demo
-cd zeek-threat-hunting-demo
-chmod +x *.sh
-```
+2. **Simulate Attack from Kali**:
+   - Brute-force: `hydra -l victim -P /usr/share/wordlists/rockyou.txt ssh://<ubuntu-ip> -t 16 -V -I` (replace `<ubuntu-ip>` with Ubuntu's IP, e.g., 10.54.164.253).
 
-Configure Zeek to detect SSH brute-force:
-```bash
-echo '@load protocols/ssh/detect-bruteforcing' | sudo tee -a /opt/zeek/share/zeek/site/local.zeek
-sudo zeekctl deploy
-```
+3. **Observe**:
+   - Logs flood in terminals.
+   - Kibana (`localhost:5601`) shows spike.
+   - Alert pops: Click "Yes" to block IP.
 
-Set up Filebeat to ship Zeek logs to Elasticsearch. Edit `/etc/filebeat/filebeat.yml`:
-```yaml
-filebeat.inputs:
-- type: log
-  paths:
-    - /opt/zeek/logs/current/*.log
+4. **Block/Unblock Commands**:
+   - Check block: `sudo iptables -L INPUT -n | grep <kali-ip>` (e.g., 10.54.164.85).
+   - Unblock: `sudo iptables -D INPUT -s <kali-ip> -j DROP`.
 
-output.elasticsearch:
-  hosts: ["localhost:9200"]
-```
+5. **Stop Attack**: Ctrl+C on Hydra; no new logs/spikes after block.
 
-Then start everything:
-```bash
-sudo systemctl start elasticsearch kibana filebeat
-```
+## Scripts Explanation
+- **zeek-log-viewer.sh**: Formats Zeek logs (conn/ssh/dns/http) into clean tables with colors. Usage: `./zeek-log-viewer.sh [conn|ssh|all]`.
+- **zeek-live-monitor.sh**: Real-time viewer with split sections for SSH attacks and connections. Highlights suspicious activity. Usage: `./zeek-live-monitor.sh`.
+- **ssh_alert.sh**: Monitors ssh.log, counts failures, shows Zenity pop-up if threshold hit, blocks IP if "Yes". Usage: `sudo ./ssh_alert.sh`.
 
-## Running the Demo
-
-On the Ubuntu box:
-```bash
-# Terminal 1: Watch SSH attacks in real-time
-./zeek-live-monitor.sh
-
-# Terminal 2: Alert on brute-force threshold (>10 failures in 30s)
-sudo ./ssh_alert.sh
-
-# Terminal 3: View formatted logs
-./zeek-log-viewer.sh ssh
-```
-
-On the Kali box:
-```bash
-hydra -l victim -P /usr/share/wordlists/rockyou.txt ssh://10.54.164.253 -t 16 -V -I
-```
-
-Watch the magic:
-1. Attacks flood the terminal
-2. Kibana dashboard shows the spike
-3. Alert pops up
-4. Click "Yes" to block the attacker IP with iptables
-
-## Scripts
-
-- **ssh_alert.sh**: Monitors `ssh.log` for failed logins. If >10 failures in 30 seconds, shows a GUI alert and blocks the IP if you confirm.
-- **zeek-live-monitor.sh**: Real-time colored view of SSH attacks and all network connections. Good for demos.
-- **zeek-log-viewer.sh**: Cleaner formatted output of Zeek logs (connection, SSH, DNS, HTTP). Usage: `./zeek-log-viewer.sh [ssh|conn|dns|http|all]`
-
-## Known Issues / TODO
-
-- The hardcoded Kali IP in `zeek-live-monitor.sh` (192.168.1.12) — update to your actual network setup
-- SSH brute-force detection relies on Zeek's built-in `detect-bruteforcing` policy. If that's not triggering, you'll see raw logs but no special alerts
-- Block rules (iptables) aren't persistent across reboot — good for demo, but add to `/etc/iptables/rules.v4` if you want to keep them
+## Screenshots
+- Kibana Spike: ![Kibana Spike](pictures/kibana-spike.png)
+- Alert Pop-up: ![Alert Pop-up](pictures/alert-popup.png)
+- Terminal Logs: ![Terminal Logs](pictures/terminal-logs.png)
 
 ## License
+MIT License - See [LICENSE](LICENSE) for details.
 
-MIT — Use it however you want.
+## Acknowledgments
+- Inspired by MITRE ATT&CK framework and open-source tools like Zeek/ELK.
